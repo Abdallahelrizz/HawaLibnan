@@ -23,6 +23,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/places', placeRoutes);
 
 // Start server
-app.listen(port, () => {
-  console.log(`server running on http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`server running on port ${port}`);
 });
+
