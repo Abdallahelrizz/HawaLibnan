@@ -1,43 +1,39 @@
 // User model - database queries for users
 const db = require("../db");
 
-exports.findByEmail = (email, callback) => {
+exports.findByEmail = async (email) => {
   const sql = 'SELECT * FROM users WHERE email = ?';
-  db.query(sql, [email], callback);
+  const [rows] = await db.query(sql, [email]);
+  return rows;
 };
 
-exports.createUser = (email, password, callback) => {
+exports.createUser = async (email, password) => {
   const sql = 'INSERT INTO users (email, password) VALUES (?, ?)';
-  db.query(sql, [email, password], callback);
+  const [result] = await db.query(sql, [email, password]);
+  return result;
 };
 
 // Get user by ID for profile page
-function getUserById(id, callback) {
-  db.query(
+async function getUserById(id) {
+  const [rows] = await db.query(
     "SELECT id, email, profile_image, bio FROM users WHERE id = ?",
-    [id],
-    (err, results) => {
-      if (err) return callback(err);
-
-      if (results.length === 0) {
-        return callback(null, null);
-      }
-
-      callback(null, results[0]);
-    }
+    [id]
   );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return rows[0];
 }
 
 // Update profile image and bio
-function updateUserProfile(id, profileImage, bio, callback) {
-  db.query(
+async function updateUserProfile(id, profileImage, bio) {
+  const [result] = await db.query(
     "UPDATE users SET profile_image = ?, bio = ? WHERE id = ?",
-    [profileImage, bio, id],
-    (err, result) => {
-      if (err) return callback(err);
-      callback(null, result);
-    }
+    [profileImage, bio, id]
   );
+  return result;
 }
 
 exports.getUserById = getUserById;

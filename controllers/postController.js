@@ -4,84 +4,97 @@ const db = require("../db");
 const Post = require("../models/postModel");
 
 // get all posts
-exports.getPosts = (req, res) => {
-  const userId = Number(req.query.user_id) || 0;
+exports.getPosts = async (req, res) => {
+  try {
+    const userId = Number(req.query.user_id) || 0;
 
-  Post.getPosts(userId, (err, results) => {
-    if (err) return res.status(500).send("error loading posts");
+    const results = await Post.getPosts(userId);
     res.json(results);
-  });
+  } catch (err) {
+    console.error("getPosts error:", err);
+    res.status(500).send("error loading posts");
+  }
 };
 
-exports.createPost = (req, res) => {
-  const { user_id, caption, image } = req.body;
+exports.createPost = async (req, res) => {
+  try {
+    const { user_id, caption, image } = req.body;
 
-  if (!user_id || !caption) {
-    return res.status(400).send("missing user_id or caption");
-  }
-
-  Post.createPost(user_id, caption, image, (err) => {
-    if (err) return res.status(500).send("error creating post");
-    res.send("post added");
-  });
-};
-
-exports.likePost = (req, res) => {
-  const { user_id, post_id } = req.body;
-
-  if (!user_id || !post_id) {
-    return res.status(400).send("missing user_id or post_id");
-  }
-
-  Post.likePost(user_id, post_id, (err) => {
-    if (err) {
-      // already liked, just ignore it
-      if (err.code === "ER_DUP_ENTRY") return res.send("already liked");
-      return res.status(500).send("like error");
+    if (!user_id || !caption) {
+      return res.status(400).send("missing user_id or caption");
     }
-    res.send("liked");
-  });
+
+    await Post.createPost(user_id, caption, image);
+    res.send("post added");
+  } catch (err) {
+    console.error("createPost error:", err);
+    res.status(500).send("error creating post");
+  }
 };
 
-exports.unlikePost = (req, res) => {
-  const { user_id, post_id } = req.body;
+exports.likePost = async (req, res) => {
+  try {
+    const { user_id, post_id } = req.body;
 
-  if (!user_id || !post_id) {
-    return res.status(400).send("missing user_id or post_id");
+    if (!user_id || !post_id) {
+      return res.status(400).send("missing user_id or post_id");
+    }
+
+    await Post.likePost(user_id, post_id);
+    res.send("liked");
+  } catch (err) {
+    // already liked, just ignore it
+    if (err.code === "ER_DUP_ENTRY") return res.send("already liked");
+    console.error("likePost error:", err);
+    res.status(500).send("like error");
   }
+};
 
-  Post.unlikePost(user_id, post_id, (err) => {
-    if (err) return res.status(500).send("unlike error");
+exports.unlikePost = async (req, res) => {
+  try {
+    const { user_id, post_id } = req.body;
+
+    if (!user_id || !post_id) {
+      return res.status(400).send("missing user_id or post_id");
+    }
+
+    await Post.unlikePost(user_id, post_id);
     res.send("unliked");
-  });
+  } catch (err) {
+    console.error("unlikePost error:", err);
+    res.status(500).send("unlike error");
+  }
 };
 
 // add comment
-exports.addComment = (req, res) => {
-  const { post_id, user_id, text } = req.body;
+exports.addComment = async (req, res) => {
+  try {
+    const { post_id, user_id, text } = req.body;
 
-  if (!post_id || !user_id || !text) {
-    return res.status(400).send("missing fields");
-  }
+    if (!post_id || !user_id || !text) {
+      return res.status(400).send("missing fields");
+    }
 
-  Post.addComment(post_id, user_id, text, (err) => {
-    if (err) return res.status(500).send("comment error");
+    await Post.addComment(post_id, user_id, text);
     res.send("comment added");
-  });
+  } catch (err) {
+    console.error("addComment error:", err);
+    res.status(500).send("comment error");
+  }
 };
 
 // Delete post - only owner can delete
-exports.deletePost = (req, res) => {
-  const postId = req.params.id;
-  const userId = req.body.user_id;
+exports.deletePost = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const userId = req.body.user_id;
 
-  if (!postId || !userId) {
-    return res.status(400).send("missing post id or user id");
-  }
+    if (!postId || !userId) {
+      return res.status(400).send("missing post id or user id");
+    }
 
-  // check if user owns the post
-  db.query("SELECT user_id FROM posts WHERE id = ?", [postId], (err, rows) => {
-    if (err) return res.status(500).send("error checking post");
+    // check if user owns the post
+    const [rows] = await db.query("SELECT user_id FROM posts WHERE id = ?", [postId]);
     if (rows.length === 0) return res.status(404).send("post not found");
 
     if (Number(rows[0].user_id) !== Number(userId)) {
@@ -89,32 +102,26 @@ exports.deletePost = (req, res) => {
     }
 
     // delete likes first, then comments, then post (Copilot helped with the order)
-    db.query("DELETE FROM post_likes WHERE post_id = ?", [postId], (err2) => {
-      if (err2) return res.status(500).send("error deleting likes");
-
-      // then delete comments
-      db.query("DELETE FROM post_comments WHERE post_id = ?", [postId], (err3) => {
-        if (err3) return res.status(500).send("error deleting comments");
-
-        // finally delete the post
-        db.query("DELETE FROM posts WHERE id = ?", [postId], (err4) => {
-          if (err4) return res.status(500).send("error deleting post");
-          res.send("post deleted");
-        });
-      });
-    });
-  });
+    await db.query("DELETE FROM post_likes WHERE post_id = ?", [postId]);
+    await db.query("DELETE FROM post_comments WHERE post_id = ?", [postId]);
+    await db.query("DELETE FROM posts WHERE id = ?", [postId]);
+    
+    res.send("post deleted");
+  } catch (err) {
+    console.error("deletePost error:", err);
+    res.status(500).send("error deleting post");
+  }
 };
 
 // get comments for a post
-exports.getComments = (req, res) => {
-  const post_id = req.params.id;
+exports.getComments = async (req, res) => {
+  try {
+    const post_id = req.params.id;
 
-  Post.getComments(post_id, (err, results) => {
-    if (err) {
-      console.error("getComments error:", err);
-      return res.status(500).send("error loading comments");
-    }
+    const results = await Post.getComments(post_id);
     res.json(results);
-  });
+  } catch (err) {
+    console.error("getComments error:", err);
+    res.status(500).send("error loading comments");
+  }
 };

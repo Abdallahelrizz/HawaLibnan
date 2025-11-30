@@ -2,7 +2,7 @@
 const db = require("../db");
 
 // get all posts (with comments_count, likes_count, liked_by_user)
-exports.getPosts = (userId, callback) => {
+exports.getPosts = async (userId) => {
   const sql = `
     SELECT 
       posts.*,
@@ -24,36 +24,41 @@ exports.getPosts = (userId, callback) => {
     ORDER BY created_at DESC
   `;
   // Copilot helped with the EXISTS check for liked_by_user
-  db.query(sql, [userId], callback);
+  const [rows] = await db.query(sql, [userId]);
+  return rows;
 };
 
 // add new post
-exports.createPost = (user_id, caption, image, callback) => {
+exports.createPost = async (user_id, caption, image) => {
   const sql = "INSERT INTO posts (user_id, caption, image) VALUES (?, ?, ?)";
-  db.query(sql, [user_id, caption, image], callback);
+  const [result] = await db.query(sql, [user_id, caption, image]);
+  return result;
 };
 
 // like a post
-exports.likePost = (user_id, post_id, callback) => {
+exports.likePost = async (user_id, post_id) => {
   const sql = "INSERT INTO post_likes (user_id, post_id) VALUES (?, ?)";
-  db.query(sql, [user_id, post_id], callback);
+  const [result] = await db.query(sql, [user_id, post_id]);
+  return result;
 };
 
 // unlike a post
-exports.unlikePost = (user_id, post_id, callback) => {
+exports.unlikePost = async (user_id, post_id) => {
   const sql = "DELETE FROM post_likes WHERE user_id = ? AND post_id = ?";
-  db.query(sql, [user_id, post_id], callback);
+  const [result] = await db.query(sql, [user_id, post_id]);
+  return result;
 };
 
 // add comment
-exports.addComment = (post_id, user_id, text, callback) => {
+exports.addComment = async (post_id, user_id, text) => {
   const sql =
     "INSERT INTO post_comments (post_id, user_id, text) VALUES (?, ?, ?)";
-  db.query(sql, [post_id, user_id, text], callback);
+  const [result] = await db.query(sql, [post_id, user_id, text]);
+  return result;
 };
 
 // get comments for a post
-exports.getComments = (post_id, callback) => {
+exports.getComments = async (post_id) => {
   const sql = `
     SELECT post_comments.*, users.email
       FROM post_comments
@@ -61,5 +66,6 @@ exports.getComments = (post_id, callback) => {
      WHERE post_id = ?
      ORDER BY created_at ASC
   `;
-  db.query(sql, [post_id], callback);
+  const [rows] = await db.query(sql, [post_id]);
+  return rows;
 };

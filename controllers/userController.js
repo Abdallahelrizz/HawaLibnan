@@ -3,11 +3,12 @@ const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 
 // signup user
-exports.signup = (req, res) => {
-  const { email, password } = req.body;
+exports.signup = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  // check if user exists
-  User.findByEmail(email, async (err, results) => {
+    // check if user exists
+    const results = await User.findByEmail(email);
     if (results && results.length > 0) {
       return res.status(400).send('email already used');
     }
@@ -16,19 +17,21 @@ exports.signup = (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
 
     // save user
-    User.createUser(email, hashed, (err2) => {
-      if (err2) return res.status(500).send('signup error');
-      res.send('user created');
-    });
-  });
+    await User.createUser(email, hashed);
+    res.send('user created');
+  } catch (err) {
+    console.error("signup error:", err);
+    res.status(500).send('signup error');
+  }
 };
 
 // login user
-exports.login = (req, res) => {
-  const { email, password } = req.body;
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  // find user
-  User.findByEmail(email, async (err, results) => {
+    // find user
+    const results = await User.findByEmail(email);
     const user = results && results[0];
     if (!user) return res.status(401).send('wrong email');
 
@@ -37,46 +40,48 @@ exports.login = (req, res) => {
     if (!ok) return res.status(401).send('wrong pass');
 
     res.json({ id: user.id, email: user.email });
-  });
+  } catch (err) {
+    console.error("login error:", err);
+    res.status(500).send('login error');
+  }
 };
 
 // get user by id
-exports.getUserById = (req, res) => {
-  const userId = req.params.id;
+exports.getUserById = async (req, res) => {
+  try {
+    const userId = req.params.id;
 
-  User.getUserById(userId, (err, user) => {
-    if (err) {
-      console.error("getUserById error:", err);
-      return res.status(500).send("error loading user");
-    }
+    const user = await User.getUserById(userId);
 
     if (!user) {
       return res.status(404).send("user not found");
     }
 
     res.json(user);
-  });
+  } catch (err) {
+    console.error("getUserById error:", err);
+    res.status(500).send("error loading user");
+  }
 };
 
 // update profile
-exports.updateUserProfile = (req, res) => {
-  const { userId, profileImageUrl, bio } = req.body;
+exports.updateUserProfile = async (req, res) => {
+  try {
+    const { userId, profileImageUrl, bio } = req.body;
 
-  if (!userId) {
-    return res.status(400).send("missing user id");
-  }
-
-  User.updateUserProfile(
-    userId,
-    profileImageUrl || null,
-    bio || null,
-    (err, result) => {
-      if (err) {
-        console.error("updateUserProfile error:", err);
-        return res.status(500).send("error updating profile");
-      }
-      res.send("profile updated");
+    if (!userId) {
+      return res.status(400).send("missing user id");
     }
-  );
+
+    await User.updateUserProfile(
+      userId,
+      profileImageUrl || null,
+      bio || null
+    );
+    res.send("profile updated");
+  } catch (err) {
+    console.error("updateUserProfile error:", err);
+    res.status(500).send("error updating profile");
+  }
 };
 

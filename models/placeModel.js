@@ -2,18 +2,20 @@
 
 const db = require("../db");
 
-exports.getPlaces = (callback) => {
+exports.getPlaces = async () => {
   const sql = "SELECT * FROM places ORDER BY id DESC";
-  db.query(sql, callback);
+  const [rows] = await db.query(sql);
+  return rows;
 };
 
-exports.getPlace = (placeId, callback) => {
+exports.getPlace = async (placeId) => {
   const sql = "SELECT * FROM places WHERE id = ?";
-  db.query(sql, [placeId], callback);
+  const [rows] = await db.query(sql, [placeId]);
+  return rows;
 };
 
 // Get reviews with user emails
-exports.getReviews = (placeId, callback) => {
+exports.getReviews = async (placeId) => {
   const sql = `
     SELECT place_reviews.*, users.email
     FROM place_reviews
@@ -21,42 +23,44 @@ exports.getReviews = (placeId, callback) => {
     WHERE place_id = ?
     ORDER BY created_at ASC
   `;
-  db.query(sql, [placeId], callback);
+  const [rows] = await db.query(sql, [placeId]);
+  return rows;
 };
 
-exports.addPlace = (
+exports.addPlace = async (
   name,
   category,
   description,
   image,
   createdBy,
-  locationUrl,
-  callback
+  locationUrl
 ) => {
   const sql = `
     INSERT INTO places (name, category, description, image, created_by, location_url)
     VALUES (?, ?, ?, ?, ?, ?)
   `;
-  db.query(
+  const [result] = await db.query(
     sql,
-    [name, category, description, image, createdBy, locationUrl],
-    callback
+    [name, category, description, image, createdBy, locationUrl]
   );
+  return result;
 };
 
-exports.addReview = (placeId, userId, text, callback) => {
+exports.addReview = async (placeId, userId, text) => {
   const sql = `
     INSERT INTO place_reviews (place_id, user_id, text)
     VALUES (?, ?, ?)
   `;
-  db.query(sql, [placeId, userId, text], callback);
+  const [result] = await db.query(sql, [placeId, userId, text]);
+  return result;
 };
 
 // Only delete if user owns the place
-exports.deletePlace = (placeId, userId, callback) => {
+exports.deletePlace = async (placeId, userId) => {
   const sql = `
     DELETE FROM places
     WHERE id = ? AND created_by = ?
   `;
-  db.query(sql, [placeId, userId], callback);
+  const [result] = await db.query(sql, [placeId, userId]);
+  return result;
 };
